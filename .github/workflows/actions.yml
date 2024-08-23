@@ -1,0 +1,57 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: /home/yalma/ping_pong
+      GIT_REPO: https://github.com/yalma-tgh/ping_pong-api.git
+      GIT_BRANCH: main
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install SSH Client
+        run: sudo apt-get update && sudo apt-get install -y ssh
+
+      - name: Add SSH Key
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Ensure Project Directory Exists
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.IP }} << EOF
+            sudo rm -rf $PROJECT_PATH
+            sudo mkdir -p $PROJECT_PATH
+            sudo chown -R ${{ secrets.USER }}:${{ secrets.USER }} $PROJECT_PATH
+            chmod -R 755 $PROJECT_PATH
+          EOF
+
+      - name: Deploy Application
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.IP }} << EOF
+            git clone $GIT_REPO $PROJECT_PATH
+          EOF
+
+      - name: Set Executable Permissions
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.IP }} << EOF
+            chmod +x $PROJECT_PATH/docker/celery_entrypoint.sh
+            chmod +x $PROJECT_PATH/docker/web_entrypoint.sh
+            chmod +x $PROJECT_PATH/docker/beats_entrypoint.sh
+          EOF
+
+      - name: Run Docker Compose on Server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USER }}@${{ secrets.IP }} << EOF
+            cd $PROJECT_PATH
+            docker compose down
+            docker compose up -d
+          EOF
