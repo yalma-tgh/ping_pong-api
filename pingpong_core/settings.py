@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'pingpong']
+    'pingpong_api']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
